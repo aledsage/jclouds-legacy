@@ -33,6 +33,7 @@ import static org.jclouds.concurrent.FutureIterables.awaitCompletion;
 import static org.jclouds.concurrent.FutureIterables.transformParallel;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -255,7 +256,8 @@ public class BaseComputeService implements ComputeService {
     */
    @Override
    public void destroyNode(final String id) {
-      doDestroyNode(id);
+      NodeMetadata destroyedNode = doDestroyNode(id);
+      cleanUpIncidentalResourcesOfDeadNodes(Collections.singleton(destroyedNode));
    }
 
    protected NodeMetadata doDestroyNode(final String id) {
@@ -315,9 +317,15 @@ public class BaseComputeService implements ComputeService {
 
                }, executor, null, logger, "destroyNodesMatching(" + filter + ")"));
       logger.debug("<< destroyed(%d)", set.size());
+      
+      cleanUpIncidentalResourcesOfDeadNodes(set);
       return set;
    }
 
+   protected void cleanUpIncidentalResourcesOfDeadNodes(Set<? extends NodeMetadata> deadNodes) {
+      // no-op; to be overridden
+   }
+   
    Iterable<? extends NodeMetadata> nodesMatchingFilterAndNotTerminated(Predicate<NodeMetadata> filter) {
       return filter(detailsOnAllNodes(), and(checkNotNull(filter, "filter"), not(TERMINATED)));
    }

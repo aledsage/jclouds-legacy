@@ -23,7 +23,6 @@ import static com.google.common.collect.Iterables.filter;
 import static com.google.common.collect.Iterables.transform;
 import static org.jclouds.util.Preconditions2.checkNotEmpty;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -179,26 +178,9 @@ public class EC2ComputeService extends BaseComputeService {
    }
 
    /**
-    * like {@link BaseComputeService#destroyNode} except that this will
-    * clean implicit keypairs and security groups.
-    */
-    @Override
-   public void destroyNode(String id) {
-      NodeMetadata destroyedNode = doDestroyNode(id);
-      cleanUpIncidentalResourcesOfDeadNodes(Collections.singleton(destroyedNode));
-   }
-
-   /**
-    * like {@link BaseComputeService#destroyNodesMatching} except that this will
-    * clean implicit keypairs and security groups.
+    * Cleans implicit keypairs and security groups.
     */
    @Override
-   public Set<? extends NodeMetadata> destroyNodesMatching(Predicate<NodeMetadata> filter) {
-      Set<? extends NodeMetadata> deadOnes = super.destroyNodesMatching(filter);
-      cleanUpIncidentalResourcesOfDeadNodes(deadOnes);
-      return deadOnes;
-   }
-
    protected void cleanUpIncidentalResourcesOfDeadNodes(Set<? extends NodeMetadata> deadNodes) {
       Builder<String, String> regionGroups = ImmutableMultimap.<String, String> builder();
       for (NodeMetadata nodeMetadata : deadNodes) {
@@ -206,11 +188,11 @@ public class EC2ComputeService extends BaseComputeService {
             regionGroups.put(AWSUtils.parseHandle(nodeMetadata.getId())[0], nodeMetadata.getGroup());
          }
       for (Entry<String, String> regionGroup : regionGroups.build().entries()) {
-         cleanUpIncidentalResources(regionGroup);
+         cleanUpIncidentalResources(regionGroup.getKey(), regionGroup.getValue());
       }
    }
 
-   protected void cleanUpIncidentalResources(Entry<String, String> regionGroup){
+   protected void cleanUpIncidentalResources(String region, String group){
       // For issue #445, try to delete security groups first: ec2 throws exception if in use, but
       // deleting a key pair does not.
       // This is "belt-and-braces" because deleteKeyPair also does extractIdsFromInstances & usingKeyPairAndNotDead
@@ -219,12 +201,12 @@ public class EC2ComputeService extends BaseComputeService {
       // we may delete the key-pair just when the node-being-created was about to rely on the incidental 
       // resources existing.
       try {
-         logger.debug(">> deleting incidentalResources(%s @ %s)", regionGroup.getKey(), regionGroup.getValue());
-         deleteSecurityGroup(regionGroup.getKey(), regionGroup.getValue());
-         deleteKeyPair(regionGroup.getKey(), regionGroup.getValue());
-         logger.debug("<< deleted incidentalResources(%s @ %s)", regionGroup.getKey(), regionGroup.getValue());
+         logger.debug(">> deleting incidentalResources(%s @ %s)", region, group);
+         deleteSecurityGroup(region, group);
+         deleteKeyPair(region, group); // not executed if securityGroup was in use
+         logger.debug("<< deleted incidentalResources(%s @ %s)", region, group);
       } catch (IllegalStateException e) {
-         logger.debug("<< inUse incidentalResources(%s @ %s)", regionGroup.getKey(), regionGroup.getValue());
+         logger.debug("<< inUse incidentalResources(%s @ %s)", region, group);
       }
    }
 

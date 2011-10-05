@@ -21,7 +21,6 @@ package org.jclouds.aws.ec2.compute;
 import static com.google.common.base.Preconditions.checkState;
 
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
@@ -130,9 +129,9 @@ public class AWSEC2ComputeService extends EC2ComputeService {
    }
 
    @Override
-   protected void cleanUpIncidentalResources(Entry<String, String> regionTag) {
-      super.cleanUpIncidentalResources(regionTag);
-      deletePlacementGroup(regionTag.getKey(), regionTag.getValue());
+   protected void cleanUpIncidentalResources(String region, String group) {
+      super.cleanUpIncidentalResources(region, group);
+      deletePlacementGroup(region, group);
    }
 
    /**
