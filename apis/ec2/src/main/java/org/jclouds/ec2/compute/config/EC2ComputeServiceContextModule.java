@@ -60,6 +60,7 @@ public class EC2ComputeServiceContextModule extends BaseComputeServiceContextMod
    @Singleton
    protected Supplier<Cache<RegionAndName, ? extends Image>> provideRegionAndNameToImageSupplierCache(
             @Named(PROPERTY_SESSION_INTERVAL) long seconds, final RegionAndNameToImageSupplier supplier) {
+      // FIXME Doesn't need to be memoized any more
       return new MemoizedRetryOnTimeOutButNotOnAuthorizationExceptionSupplier<Cache<RegionAndName, ? extends Image>>(
                authException, seconds, new Supplier<Cache<RegionAndName, ? extends Image>>() {
                   @Override

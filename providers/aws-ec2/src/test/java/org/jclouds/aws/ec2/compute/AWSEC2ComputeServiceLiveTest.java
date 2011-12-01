@@ -18,9 +18,12 @@
  */
 package org.jclouds.aws.ec2.compute;
 
+import static com.google.common.collect.Iterables.concat;
+import static com.google.common.collect.Sets.newTreeSet;
 import static org.testng.Assert.assertEquals;
 
 import java.util.Date;
+import java.util.Properties;
 import java.util.Set;
 
 import org.jclouds.aws.ec2.AWSEC2Client;
@@ -30,8 +33,11 @@ import org.jclouds.aws.ec2.services.AWSSecurityGroupClient;
 import org.jclouds.cloudwatch.CloudWatchAsyncClient;
 import org.jclouds.cloudwatch.CloudWatchClient;
 import org.jclouds.cloudwatch.domain.Datapoint;
+import org.jclouds.compute.ComputeServiceContextFactory;
+import org.jclouds.compute.RunNodesException;
 import org.jclouds.compute.domain.NodeMetadata;
 import org.jclouds.compute.domain.Template;
+import org.jclouds.compute.domain.TemplateBuilder;
 import org.jclouds.compute.options.TemplateOptions;
 import org.jclouds.compute.predicates.NodePredicates;
 import org.jclouds.domain.LoginCredentials;
@@ -74,7 +80,15 @@ public class AWSEC2ComputeServiceLiveTest extends EC2ComputeServiceLiveTest {
       assert node.getUserMetadata().equals(userMetadata) : String.format("node userMetadata did not match %s %s",
             userMetadata, node);
    }
-   
+
+   @Test(enabled = true, dependsOnMethods = "testCorrectAuthException")
+   public void testImageFromNonDefaultOwnerResolvesCorrectly() {
+      // A public image owner is, not owned by one of the four default owners
+      String imageId = "us-east-1/ami-44d02f2d";
+      Template defaultTemplate = client.templateBuilder().imageId(imageId).build();
+      assertEquals(defaultTemplate.getImage().getId(), imageId);
+   }
+
    @Override
    @Test(dependsOnMethods = "testCompareSizes")
    public void testExtendedOptionsAndLogin() throws Exception {
@@ -186,5 +200,41 @@ public class AWSEC2ComputeServiceLiveTest extends EC2ComputeServiceLiveTest {
          cleanupExtendedStuffInRegion(region, securityGroupClient, keyPairClient, group);
       }
 
+   }
+
+   // FIXME Don't check-in; a test for playing around and debugging behaviour
+   @Test
+   public void testCreateNodesUsingImageId() throws Exception {
+//      String imageId = "us-east-1/ami-2342a94a";
+      String imageId = "us-east-1/ami-44d02f2d";
+      //String imageOwner = "761990928256";
+      if (context != null) context.close();
+      Properties props = setupProperties();
+      props.setProperty("jclouds.ec2.ami-query", "state=available;image-type=machine");
+      //props.setProperty("jclouds.ec2.ami-query", "owner-id="+imageOwner+";state=available;image-type=machine")
+      //props.setProperty(provider + ".image-id", imageId);
+      context = new ComputeServiceContextFactory(setupRestProperties()).createContext(provider,
+            ImmutableSet.of(new Log4JLoggingModule(), getSshModule()), props);
+      client = context.getComputeService();
+
+      System.out.println("image size="+client.listImages().size());
+      
+      TemplateBuilder templateBuilder = client.templateBuilder();
+      templateBuilder.imageId(imageId);
+
+      template = buildTemplate(templateBuilder);
+//      template = addRunScriptToTemplate(buildTemplate(templateBuilder));
+      
+      try {
+         nodes = newTreeSet(client.createNodesInGroup(group, 1, template));
+      } catch (RunNodesException e) {
+         nodes = newTreeSet(concat(e.getSuccessfulNodes(), e.getNodeErrors().keySet()));
+         throw e;
+      }
+      assertEquals(nodes.size(), 1);
+      checkNodes(nodes, group, "bootstrap");
+      NodeMetadata node1 = nodes.first();
+
+      checkImageIdMatchesTemplate(node1);
    }
 }

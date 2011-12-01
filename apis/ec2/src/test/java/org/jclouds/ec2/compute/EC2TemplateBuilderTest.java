@@ -34,6 +34,7 @@ import static org.jclouds.ec2.compute.domain.EC2HardwareBuilder.m2_xlarge;
 import static org.jclouds.ec2.compute.domain.EC2HardwareBuilder.t1_micro;
 import static org.testng.Assert.assertEquals;
 
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import javax.inject.Provider;
@@ -137,6 +138,24 @@ public class EC2TemplateBuilderTest {
                         .getHardware().getId());
    }
 
+   @Test
+   public void testTemplateChoiceForInstanceByImageId() throws Exception {
+      Template template = newTemplateBuilder().imageId("us-east-1/cc-image").build();
+
+      // TODO Why do we use java assert, rather than org.testng.Assert?
+      // FIXME Expected this to fail, because it should have gone to the cache instead of to the set - 
+      //       and the newTempalteBuilder doesn't set up a cache!
+      //       Will think about this more when I get more time.
+      assert template != null : "The returned template was null, but it should have a value.";
+      assertEquals(template.getImage().getId(), "us-east-1/cc-image");
+   }
+
+   @Test(expectedExceptions={NoSuchElementException.class}, expectedExceptionsMessageRegExp="imageId.*not found")
+   public void testNegativeTemplateChoiceForInstanceByImageId() throws Exception {
+      newTemplateBuilder().imageId("wrong-image-id").build();
+   }
+
+
    @SuppressWarnings("unchecked")
    private TemplateBuilder newTemplateBuilder() {
 
@@ -150,13 +169,14 @@ public class EC2TemplateBuilderTest {
       replay(templateBuilderProvider);
       Supplier<Set<? extends Location>> locations = Suppliers.<Set<? extends Location>> ofInstance(ImmutableSet
                .<Location> of(location));
+      // TODO Why do the two images give the same providerId? Is that just a typo?
       Supplier<Set<? extends Image>> images = Suppliers.<Set<? extends Image>> ofInstance(ImmutableSet.<Image> of(
                new ImageBuilder().providerId("cc-image").name("image").id("us-east-1/cc-image").location(location)
                         .operatingSystem(new OperatingSystem(OsFamily.UBUNTU, null, "1.0", "hvm", "ubuntu", true))
                         .description("description").version("1.0").defaultCredentials(new LoginCredentials("root", null, null, false))
-                        .build(), new ImageBuilder().providerId("normal-image").name("image").id("us-east-1/cc-image")
-                        .location(location).operatingSystem(
-                                 new OperatingSystem(OsFamily.UBUNTU, null, "1.0", "paravirtual", "ubuntu", true))
+                        .build(), 
+               new ImageBuilder().providerId("normal-image").name("image").id("us-east-1/cc-image").location(location)
+                        .operatingSystem(new OperatingSystem(OsFamily.UBUNTU, null, "1.0", "paravirtual", "ubuntu", true))
                         .description("description").version("1.0").defaultCredentials(new LoginCredentials("root", null, null, false))
                         .build()));
       Supplier<Set<? extends Hardware>> sizes = Suppliers.<Set<? extends Hardware>> ofInstance(ImmutableSet
