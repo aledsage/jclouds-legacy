@@ -40,7 +40,6 @@ import org.jclouds.compute.domain.Image;
 import org.jclouds.compute.domain.TemplateBuilder;
 import org.jclouds.compute.options.TemplateOptions;
 import org.jclouds.ec2.compute.config.EC2BindComputeStrategiesByClass;
-import org.jclouds.ec2.compute.config.EC2BindComputeSuppliersByClass;
 import org.jclouds.ec2.compute.domain.RegionAndName;
 import org.jclouds.ec2.compute.functions.RunningInstanceToNodeMetadata;
 import org.jclouds.ec2.compute.internal.EC2TemplateBuilderImpl;
@@ -71,7 +70,7 @@ public class AWSEC2ComputeServiceContextModule extends BaseComputeServiceContext
       super.configure();
       installDependencies();
       install(new EC2BindComputeStrategiesByClass());
-      install(new EC2BindComputeSuppliersByClass());
+      install(new AWSEC2BindComputeSuppliersByClass());
       bind(ReviseParsedImage.class).to(AWSEC2ReviseParsedImage.class);
       bind(CreateKeyPairAndSecurityGroupsAsNeededAndReturnRunOptions.class).to(
                CreateKeyPairPlacementAndSecurityGroupsAsNeededAndReturnRunOptions.class);
