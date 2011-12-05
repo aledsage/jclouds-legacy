@@ -81,14 +81,6 @@ public class AWSEC2ComputeServiceLiveTest extends EC2ComputeServiceLiveTest {
             userMetadata, node);
    }
 
-   @Test(enabled = true, dependsOnMethods = "testCorrectAuthException")
-   public void testImageFromNonDefaultOwnerResolvesCorrectly() {
-      // A public image owner is, not owned by one of the four default owners
-      String imageId = "us-east-1/ami-44d02f2d";
-      Template defaultTemplate = client.templateBuilder().imageId(imageId).build();
-      assertEquals(defaultTemplate.getImage().getId(), imageId);
-   }
-
    @Override
    @Test(dependsOnMethods = "testCompareSizes")
    public void testExtendedOptionsAndLogin() throws Exception {
@@ -200,6 +192,12 @@ public class AWSEC2ComputeServiceLiveTest extends EC2ComputeServiceLiveTest {
          cleanupExtendedStuffInRegion(region, securityGroupClient, keyPairClient, group);
       }
 
+   }
+
+   // FIXME Don't check-in; for eclipse testng maddness of running single test
+   @Test(enabled = true)
+   public void testTemplateBuildsFasterByImageIdThanBySearchingAllImages() throws Exception {
+      super.testTemplateBuildsFasterByImageIdThanBySearchingAllImages();
    }
 
    // FIXME Don't check-in; a test for playing around and debugging behaviour
